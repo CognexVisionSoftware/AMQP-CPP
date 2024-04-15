@@ -151,13 +151,13 @@ private:
     /**
      *  Method that is called when right before connection is being secured
      *  @param  state
-     *  @param  ssl
+     *  @param  ssl_ctx
      *  @return bool
      */
-    virtual bool onSecuring(TcpState *state, SSL *ssl) override
+    virtual bool onSecuring(TcpState *state, SSL_CTX *ssl_ctx) override
     {
         // pass on to user-space
-        return _handler && _handler->onSecuring(this, ssl);
+        return _handler && _handler->onSecuring(this, ssl_ctx);
     }
 
     /**

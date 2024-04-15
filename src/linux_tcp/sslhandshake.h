@@ -43,7 +43,7 @@ private:
      *  SSL structure
      *  @var SslWrapper
      */
-    SslWrapper _ssl;
+    std::unique_ptr<SslWrapper> _ssl;
 
     /**
      *  The outgoing buffer
@@ -60,13 +60,13 @@ private:
     TcpState *nextstate(const Monitor &monitor)
     {
         // check if the handler allows the connection
-        bool allowed = _parent->onSecured(this, _ssl);
+        bool allowed = _parent->onSecured(this, *_ssl);
         
         // leap out if the user space function destructed the object
         if (!monitor.valid()) return nullptr;
 
         // if connection is allowed, we move to the next state
-        if (allowed) return new SslConnected(this, std::move(_ssl), std::move(_out));
+        if (allowed) return new SslConnected(this, std::move(*_ssl), std::move(_out));
         
         // report that the connection is broken
         _parent->onError(this, "TLS connection has been rejected");
@@ -75,7 +75,7 @@ private:
         if (!monitor.valid()) return nullptr;
         
         // shutdown the connection
-        return new SslShutdown(this, std::move(_ssl));
+        return new SslShutdown(this, std::move(*_ssl));
     }
     
     /**
@@ -125,24 +125,25 @@ public:
     SslHandshake(TcpExtState *state, const std::string &hostname, TcpOutBuffer &&buffer) : 
         TcpExtState(state),
         _ctx(OpenSSL::TLS_client_method()),
-        _ssl(_ctx),
         _out(std::move(buffer))
     {
         // use the default directories for verifying certificates
         OpenSSL::SSL_CTX_set_default_verify_paths(_ctx);
 
+        // we allow userspace to make changes to the SSL structure
+        if (!_parent->onSecuring(this, _ctx)) throw std::runtime_error("failed to initialize SSL structure in user space");
+
+        _ssl = std::make_unique<SslWrapper>(_ctx);
+
         // we will be using the ssl context as a client
-        OpenSSL::SSL_set_connect_state(_ssl);
-        
+        OpenSSL::SSL_set_connect_state(*_ssl);
+       
         // associate domain name with the connection
-        OpenSSL::SSL_ctrl(_ssl, SSL_CTRL_SET_TLSEXT_HOSTNAME, TLSEXT_NAMETYPE_host_name, (void *)hostname.data());
+        OpenSSL::SSL_ctrl(*_ssl, SSL_CTRL_SET_TLSEXT_HOSTNAME, TLSEXT_NAMETYPE_host_name, (void *)hostname.data());
         
         // associate the ssl context with the socket filedescriptor
-        if (OpenSSL::SSL_set_fd(_ssl, _socket) == 0) throw std::runtime_error("failed to associate filedescriptor with ssl socket");
-        
-        // we allow userspace to make changes to the SSL structure
-        if (!_parent->onSecuring(this, _ssl)) throw std::runtime_error("failed to initialize SSL structure in user space");
-        
+        if (OpenSSL::SSL_set_fd(*_ssl, _socket) == 0) throw std::runtime_error("failed to associate filedescriptor with ssl socket");
+       
         // we are going to wait until the socket becomes writable before we start the handshake
         _parent->onIdle(this, _socket, writable);
     }
@@ -175,13 +176,13 @@ public:
         OpenSSL::ERR_clear_error();
 
         // start the ssl handshake
-        int result = OpenSSL::SSL_do_handshake(_ssl);
+        int result = OpenSSL::SSL_do_handshake(*_ssl);
         
         // if the connection succeeds, we can move to the ssl-connected state
         if (result == 1) return nextstate(monitor);
         
         // error was returned, so we must investigate what is going on
-        auto error = OpenSSL::SSL_get_error(_ssl, result);
+        auto error = OpenSSL::SSL_get_error(*_ssl, result);
         
         // check the error
         switch (error) {

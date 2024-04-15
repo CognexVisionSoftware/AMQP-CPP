@@ -1,0 +1,14 @@
+@PACKAGE_INIT@
+set_and_check(@cpcf_TARGET@_INCLUDE_DIR "@PACKAGE_cpcf_INSTALL_INC_DIR@")
+
+if(NOT TARGET @cpcf_TARGET@)
+  include(${CMAKE_CURRENT_LIST_DIR}/@cpcf_TARGET@Targets.cmake)
+endif()
+
+set(@cpcf_TARGET@_INCLUDE_DIRS ${@cpcf_TARGET@_INCLUDE_DIR} )
+set(@cpcf_TARGET@_LIBRARIES @cpcf_TARGET@)
+
+check_required_components(@cpcf_TARGET@)
+include(CMakeFindDependencyMacro)
+find_dependency(Threads)
+find_dependency(OpenSSL)

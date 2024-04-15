@@ -45,6 +45,11 @@ namespace OpenSSL {
  */
 bool valid()
 {
+    if (handle == RTLD_DEFAULT)
+    {
+        return true;
+    }
+
     // create a function
     static Function<decltype(::SSL_CTX_new)> func(handle, "SSL_CTX_new");
 
@@ -58,6 +63,11 @@ bool valid()
  */
 const SSL_METHOD *TLS_client_method()
 {
+    if (handle == RTLD_DEFAULT)
+    {
+        return ::TLS_client_method();
+    }
+
     // create a function that loads the method
     static Function<decltype(TLS_client_method)> func(handle, "TLS_client_method");
     
@@ -78,6 +88,11 @@ const SSL_METHOD *TLS_client_method()
  */
 SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) 
 {
+    if (handle == RTLD_DEFAULT)
+    {
+        return ::SSL_CTX_new(method);
+    }
+
     // create a function
     static Function<decltype(::SSL_CTX_new)> func(handle, "SSL_CTX_new");
     
@@ -94,6 +109,11 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method)
  */
 int SSL_read(SSL *ssl, void *buf, int num)
 {
+    if (handle == RTLD_DEFAULT)
+    {
+        return ::SSL_read(ssl, buf, num);
+    }
+
     // create a function
     static Function<decltype(::SSL_read)> func(handle, "SSL_read");
     
@@ -110,6 +130,11 @@ int SSL_read(SSL *ssl, void *buf, int num)
  */
 int SSL_write(SSL *ssl, const void *buf, int num)
 {
+    if (handle == RTLD_DEFAULT)
+    {
+        return ::SSL_write(ssl, buf, num);
+    }
+
     // create a function
     static Function<decltype(::SSL_write)> func(handle, "SSL_write");
     
@@ -125,6 +150,11 @@ int SSL_write(SSL *ssl, const void *buf, int num)
  */
 int SSL_set_fd(SSL *ssl, int fd) 
 {
+    if (handle == RTLD_DEFAULT)
+    {
+        return ::SSL_set_fd(ssl, fd);
+    }
+
     // create a function
     static Function<decltype(::SSL_set_fd)> func(handle, "SSL_set_fd");
     
@@ -140,6 +170,11 @@ int SSL_set_fd(SSL *ssl, int fd)
  */
 int SSL_pending(const SSL *ssl)
 {
+    if (handle == RTLD_DEFAULT)
+    {
+        return ::SSL_pending(ssl);
+    }
+
     // create a function
     static Function<decltype(::SSL_pending)> func(handle, "SSL_pending");
     
@@ -153,6 +188,12 @@ int SSL_pending(const SSL *ssl)
  */
 void SSL_CTX_free(SSL_CTX *ctx)
 {
+    if (handle == RTLD_DEFAULT)
+    {
+        ::SSL_CTX_free(ctx);
+        return;
+    }
+
     // create a function
     static Function<decltype(::SSL_CTX_free)> func(handle, "SSL_CTX_free");
     
@@ -167,6 +208,12 @@ void SSL_CTX_free(SSL_CTX *ctx)
  */
 void SSL_free(SSL *ssl)
 {
+    if (handle == RTLD_DEFAULT)
+    {
+        ::SSL_free(ssl);
+        return;
+    }
+
     // create a function
     static Function<decltype(::SSL_free)> func(handle, "SSL_free");
     
@@ -181,6 +228,11 @@ void SSL_free(SSL *ssl)
  */
 SSL *SSL_new(SSL_CTX *ctx)
 {
+    if (handle == RTLD_DEFAULT)
+    {
+        return ::SSL_new(ctx);
+    }
+
     // create a function
     static Function<decltype(::SSL_new)> func(handle, "SSL_new");
     
@@ -195,6 +247,11 @@ SSL *SSL_new(SSL_CTX *ctx)
  */
 int SSL_up_ref(SSL *ssl)
 {
+    if (handle == RTLD_DEFAULT)
+    {
+        return ::SSL_up_ref(ssl);
+    }
+
     // create a function
     static Function<decltype(SSL_up_ref)> func(handle, "SSL_up_ref");
     
@@ -213,6 +270,11 @@ int SSL_up_ref(SSL *ssl)
  */
 int SSL_shutdown(SSL *ssl)
 {
+    if (handle == RTLD_DEFAULT)
+    {
+        return ::SSL_shutdown(ssl);
+    }
+
     // create a function
     static Function<decltype(::SSL_shutdown)> func(handle, "SSL_shutdown");
     
@@ -226,12 +288,17 @@ int SSL_shutdown(SSL *ssl)
  */
 void SSL_set_connect_state(SSL *ssl)
 {
+    if (handle == RTLD_DEFAULT)
+    {
+        ::SSL_set_connect_state(ssl);
+        return;
+    }
+
     // create a function
     static Function<decltype(::SSL_set_connect_state)> func(handle, "SSL_set_connect_state");
     
     // call the openssl function
     func(ssl);
-
 }
 
 /**
@@ -241,6 +308,11 @@ void SSL_set_connect_state(SSL *ssl)
  */
 int SSL_do_handshake(SSL *ssl)
 {
+    if (handle == RTLD_DEFAULT)
+    {
+        return ::SSL_do_handshake(ssl);
+    }
+
     // create a function
     static Function<decltype(::SSL_do_handshake)> func(handle, "SSL_do_handshake");
     
@@ -255,6 +327,11 @@ int SSL_do_handshake(SSL *ssl)
  */
 int SSL_get_shutdown(const SSL *ssl)
 {
+    if (handle == RTLD_DEFAULT)
+    {
+        return ::SSL_get_shutdown(ssl);
+    }
+
     // create a function
     static Function<decltype(::SSL_get_shutdown)> func(handle, "SSL_get_shutdown");
     
@@ -270,6 +347,11 @@ int SSL_get_shutdown(const SSL *ssl)
  */
 int SSL_get_error(const SSL *ssl, int ret)
 {
+    if (handle == RTLD_DEFAULT)
+    {
+        return ::SSL_get_error(ssl, ret);
+    }
+
     // create a function
     static Function<decltype(::SSL_get_error)> func(handle, "SSL_get_error");
     
@@ -287,6 +369,11 @@ int SSL_get_error(const SSL *ssl, int ret)
  */
 long SSL_ctrl(SSL *ssl, int cmd, long larg, void *parg)
 {
+    if (handle == RTLD_DEFAULT)
+    {
+        return ::SSL_ctrl(ssl, cmd, larg, parg);
+    }
+
     // create a function
     static Function<decltype(::SSL_ctrl)> func(handle, "SSL_ctrl");
     
@@ -303,6 +390,11 @@ long SSL_ctrl(SSL *ssl, int cmd, long larg, void *parg)
  */
 int SSL_use_certificate_file(SSL *ssl, const char *file, int type)
 {
+    if (handle == RTLD_DEFAULT)
+    {
+        return ::SSL_use_certificate_file(ssl, file, type);
+    }
+
     // create a function
     static Function<decltype(::SSL_use_certificate_file)> func(handle, "SSL_use_certificate_file");
     
@@ -320,6 +412,11 @@ int SSL_use_certificate_file(SSL *ssl, const char *file, int type)
  */
 long SSL_CTX_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg)
 {
+    if (handle == RTLD_DEFAULT)
+    {
+        return ::SSL_CTX_ctrl(ctx, cmd, larg, parg);
+    }
+
     // create a function
     static Function<decltype(::SSL_CTX_ctrl)> func(handle, "SSL_CTX_ctrl");
     
@@ -334,6 +431,11 @@ long SSL_CTX_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg)
  */
 int SSL_CTX_set_default_verify_paths(SSL_CTX *ctx)
 {
+    if (handle == RTLD_DEFAULT)
+    {
+        return ::SSL_CTX_set_default_verify_paths(ctx);
+    }
+
     // the actual function
     static Function<decltype(::SSL_CTX_set_default_verify_paths)> func(handle, "SSL_CTX_set_default_verify_paths");
 
@@ -347,6 +449,12 @@ int SSL_CTX_set_default_verify_paths(SSL_CTX *ctx)
  */
 void ERR_clear_error()
 {
+    if (handle == RTLD_DEFAULT)
+    {
+        ::ERR_clear_error();
+        return;
+    }
+
     // create a function
     static Function<decltype(::ERR_clear_error)> func(handle, "ERR_clear_error");
 
@@ -361,6 +469,12 @@ void ERR_clear_error()
  */
 void ERR_print_errors_cb(int (*cb)(const char *str, size_t len, void *u), void *u)
 {
+    if (handle == RTLD_DEFAULT)
+    {
+        ::ERR_print_errors_cb(cb, u);
+        return;
+    }
+
     // the actual function
     static Function<decltype(::ERR_print_errors_cb)> func(handle, "ERR_print_errors_cb");
 

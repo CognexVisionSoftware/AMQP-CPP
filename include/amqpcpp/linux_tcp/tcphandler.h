@@ -65,14 +65,14 @@ public:
      *  amqps:// connections). This method can be overridden in user space to load
      *  client side certificates.
      *  @param  connection      The connection for which TLS was just started
-     *  @param  ssl             Pointer to the SSL structure that can be modified
+     *  @param  ssl_ctx         Pointer to the SSL context structure that can be modified
      *  @return bool            True to proceed / accept the connection, false to break up
      */
-    virtual bool onSecuring(TcpConnection *connection, SSL *ssl)
+    virtual bool onSecuring(TcpConnection *connection, SSL_CTX *ssl_ctx)
     {
         // make sure compilers dont complain about unused parameters
         (void) connection;
-        (void) ssl;
+        (void) ssl_ctx;
 
         // default implementation: do not do anything, just allow the connection
         return true;

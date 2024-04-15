@@ -96,6 +96,9 @@ else()
     add_library(${PROJECT_NAME} STATIC ${src_MAIN} ${src_LINUX_TCP})
 endif()
 
+find_package(Threads REQUIRED)
+target_link_libraries(${PROJECT_NAME} PUBLIC Threads::Threads)
+
 if(WIN32)
     target_link_libraries(${PROJECT_NAME} PUBLIC ws2_32)
 endif()
@@ -104,19 +107,21 @@ endif()
 # ------------------------------------------------------------------------------------------------------
 
 include(GNUInstallDirs)
-install(TARGETS ${PROJECT_NAME} EXPORT ${PROJECT_NAME}Config
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
 
 # copy header files
 install(DIRECTORY include/amqpcpp/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/amqpcpp
         FILES_MATCHING PATTERN "*.h")
 install(FILES include/amqpcpp.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-install(EXPORT ${PROJECT_NAME}Config DESTINATION cmake)
-export(TARGETS ${PROJECT_NAME} FILE ${PROJECT_NAME}Config.cmake)
+install(TARGETS ${PROJECT_NAME} EXPORT ${PROJECT_NAME}Targets)
+install(EXPORT ${PROJECT_NAME}Targets DESTINATION cmake)
+
+set(cpcf_TARGET ${PROJECT_NAME})
+set(cpcf_INSTALL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include")
+include(CMakePackageConfigHelpers)
+configure_package_config_file("${PROJECT_NAME}Config.cmake.in" "${CMAKE_INSTALL_PREFIX}/cmake/${PROJECT_NAME}Config.cmake"
+  INSTALL_DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake"
+  PATH_VARS cpcf_TARGET cpcf_INSTALL_INC_DIR)
 
 set(DEST_DIR "${CMAKE_INSTALL_PREFIX}")
 set(PRIVATE_LIBS "-llibamqpcc")
@@ -131,9 +136,10 @@ target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC
     $<INSTALL_INTERFACE:include/>
 )
 
+# Find OpenSSL and provide include dirs
+find_package(OpenSSL REQUIRED)
+target_link_libraries(${PROJECT_NAME} PUBLIC OpenSSL::SSL)
+
 if(AMQP-CPP_LINUX_TCP)
-    target_link_libraries(${PROJECT_NAME} ${CMAKE_DL_LIBS})
-    # Find OpenSSL and provide include dirs
-    find_package(OpenSSL REQUIRED)
-    target_include_directories(${PROJECT_NAME} PRIVATE ${OPENSSL_INCLUDE_DIR})
+    target_link_libraries(${PROJECT_NAME} PUBLIC ${CMAKE_DL_LIBS})
 endif()

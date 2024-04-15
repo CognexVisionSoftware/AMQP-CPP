@@ -50,10 +50,10 @@ public:
     /**
      *  Method that is called right before a connection is secured and that allows userspac to change SSL
      *  @param  state
-     *  @param  ssl
+     *  @param  ssl_ctx
      *  @return bool
      */
-    virtual bool onSecuring(TcpState *state, SSL *ssl) = 0;
+    virtual bool onSecuring(TcpState *state, SSL_CTX *ssl_ctx) = 0;
 
     /**
      *  Method that is called when the connection is secured

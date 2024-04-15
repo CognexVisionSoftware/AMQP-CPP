@@ -420,7 +420,6 @@ bool ConnectionImpl::send(CopiedBuffer &&buffer)
     // are we waiting for other frames to be sent before us?
     if (_queue.empty())
     {
-        // send it directly
         _handler->onData(_parent, buffer.data(), buffer.size());
     }
     else

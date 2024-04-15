@@ -396,14 +396,17 @@ public:
         // get the result
         int result = OpenSSL::SSL_write(_ssl, buffer, size);  
 
-        // if the result is larger than zero, we are successful
-        if (result > 0) return; 
-            
+        // number of bytes sent
+        size_t bytes = result < 0 ? 0 : result;
+
+        // ok if all data was sent
+        if (bytes >= size) return;
+    
+        // add the data to the buffer
+        _out.add(buffer + bytes, size - bytes);
+        
         // check for error
         auto error = OpenSSL::SSL_get_error(_ssl, result);
-
-        // put the data in the outgoing buffer
-        _out.add(buffer, size);
 
         // the operation failed, we may have to repeat our call. this may detect that
         // ssl is in an error state, however that is ok because it will set an internal 
