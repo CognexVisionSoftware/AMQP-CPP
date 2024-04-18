@@ -264,7 +264,18 @@ public:
             if (header.msg_iovlen == 0) break;
 
             // send the data
-            auto result = sendmsg(socket, &header, AMQP_CPP_MSG_NOSIGNAL);
+            int result;
+
+            while(true)
+            {
+                result = sendmsg(socket, &header, AMQP_CPP_MSG_NOSIGNAL);
+                if (result < 0 && errno == EAGAIN)
+                {
+                  continue;
+                }
+
+                break;
+            }
 
             // skip on error, or when nothing was written
             if (result <= 0) return total > 0 ? total : result;
@@ -287,26 +298,56 @@ public:
      */
     ssize_t sendto(SSL *ssl)
     {
-        // we're going to fill a lot of buffers (for ssl only one buffer at a time can be sent)
-        struct iovec buffer[1];
-        
-        // fill the buffers, and leap out if there is no data
-        auto buffers = fill(buffer, 1);
-        
-        // just to be sure we do this check
-        if (buffers == 0) return 0;
-        
-        // make sure that the error queue is currently completely empty, so the error queue can be checked
-        OpenSSL::ERR_clear_error();
+        // total number of bytes written
+        ssize_t total = 0;
 
-        // send the data
-        auto result = OpenSSL::SSL_write(ssl, buffer[0].iov_base, buffer[0].iov_len);
+        while (_size > 0)
+        {
+            // we're going to fill a lot of buffers (for ssl only one buffer at a time can be sent)
+            struct iovec buffer[1];
         
-        // on success we shrink the buffer
-        if (result > 0) shrink(result);
+            // fill the buffers, and leap out if there is no data
+            auto buffers = fill(buffer, 1);
         
+            // just to be sure we do this check
+            if (buffers == 0) break;
+
+            int result;
+            while(true)
+            {
+                // make sure that the error queue is currently completely empty, so the error queue can be checked
+                OpenSSL::ERR_clear_error();
+
+                // send the data
+                result = OpenSSL::SSL_write(ssl, buffer[0].iov_base, buffer[0].iov_len);
+                if (result < 0)
+                {
+                    // check for error
+                    auto syscall_errno = errno;
+                    auto error = OpenSSL::SSL_get_error(ssl, result);
+
+                    // Kinda normal, similar to EAGAIN
+                    if (error == SSL_ERROR_WANT_WRITE || (error == SSL_ERROR_SYSCALL && syscall_errno == EAGAIN))
+                    {
+                        continue;
+                    }
+                }
+
+                break;
+            }
+
+            // skip on error, or when nothing was written
+            if (result <= 0) return total > 0 ? total : result;
+
+            // shrink the buffer
+            shrink(result);
+        
+            // update total number of bytes written
+            total += result;
+        }
+
         // done
-        return result;
+        return total;
     }
 };
     

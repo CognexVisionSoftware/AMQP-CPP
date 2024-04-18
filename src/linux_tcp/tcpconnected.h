@@ -197,22 +197,38 @@ public:
         if (_closed) return;
         
         // is there already a buffer of data that can not be sent?
-        if (_out) return _out.add(buffer, size);
+        if (_out) 
+        {
+          return _out.add(buffer, size); 
+        }
 
-        // there is no buffer, send the data right away
-        auto result = ::send(_socket, buffer, size, AMQP_CPP_MSG_NOSIGNAL);
+        size_t remaining = size;
+        size_t bytes = 0;
+        while (remaining > 0)
+        {
+            // there is no buffer, send the data right away
+            auto result = ::send(_socket, buffer+bytes, remaining, AMQP_CPP_MSG_NOSIGNAL);
+            if (result < 0)
+            {
+                if (errno == EAGAIN)
+                {
+                    continue;
+                }
 
-        // number of bytes sent
-        size_t bytes = result < 0 ? 0 : result;
+                // add the data to the buffer
+                _out.add(buffer + bytes, remaining);
 
-        // ok if all data was sent
-        if (bytes >= size) return;
-    
-        // add the data to the buffer
-        _out.add(buffer + bytes, size - bytes);
-        
-        // start monitoring the socket to find out when it is writable
-        _parent->onIdle(this, _socket, readable | writable);
+                // start monitoring the socket to find out when it is writable
+                _parent->onIdle(this, _socket, readable | writable);
+                return;
+            }
+
+            bytes += result;
+            remaining -= result;
+        }
+
+        // tell the handler to monitor the socket, if there is still an out
+        _parent->onIdle(this, _socket, _out ? readable | writable : readable);
     }
     
     /**

@@ -834,7 +834,7 @@ bool ChannelImpl::flush()
     Monitor monitor(this);
 
     // send all frames while not in synchronous mode
-    while (_connection && !_synchronous && !_queue.empty())
+    while (monitor.valid() && _connection && !_synchronous && !_queue.empty())
     {
         // retrieve the front item
         auto buffer = std::move(_queue.front());
@@ -847,9 +847,6 @@ bool ChannelImpl::flush()
 
         // send to tcp connection
         if (!_connection->send(std::move(buffer))) return false;
-
-        // the user space handler may have destructed this channel object
-        if (!monitor.valid()) return true;
 
         // frame was sent, if this was a synchronous frame, we now have to wait
         _synchronous = syncframe;

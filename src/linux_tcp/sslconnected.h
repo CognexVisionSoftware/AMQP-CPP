@@ -104,15 +104,16 @@ private:
     
     /**
      *  Method to repeat the previous call
-     *  @param  monitor     monitor to check if connection object still exists
-     *  @param  state       the state that we were in
-     *  @param  result      result of an earlier SSL_get_error call
+     *  @param  monitor       monitor to check if connection object still exists
+     *  @param  state         the state that we were in
+     *  @param  result        result of an earlier SSL_get_error call
+     *  @param  syscall_errno the system calls errno
      *  @return TcpState*
      */
-    TcpState *repeat(const Monitor &monitor, enum State state, int error)
+    TcpState *repeat(const Monitor &monitor, enum State state, int error, int syscall_errno)
     {
         // if we are not able to repeat the call, we are in an error state and should tear down the connection
-        if (!repeat(state, error)) return monitor.valid() ? new TcpClosed(this) : nullptr;
+        if (!repeat(state, error, syscall_errno)) return monitor.valid() ? new TcpClosed(this) : nullptr;
 
         // if the socket was closed in the meantime and we are not sending anything any more, we should initialize the shutdown sequence
         if (_closed && _state == state_idle) return new SslShutdown(this, std::move(_ssl));
@@ -123,11 +124,12 @@ private:
 
     /**
      *  Method to repeat the previous call, which has then been
-     *  @param  state       the state that we were in
-     *  @param  result      result of an earlier SSL_get_error call
+     *  @param  state         the state that we were in
+     *  @param  result        result of an earlier SSL_get_error call
+     *  @param  syscall_errno the system calls errno
      *  @return bool
      */
-    bool repeat(enum State state, int error)
+    bool repeat(enum State state, int error, int syscall_errno)
     {
         // check the error
         switch (error) {
@@ -164,6 +166,18 @@ private:
             return true;
 
         default:
+            if (error == SSL_ERROR_SYSCALL && syscall_errno == EAGAIN)
+            {
+                _state = state;
+                auto mask = _state == state_sending ? readable | writable : readable;
+
+                // wait until socket becomes writable again
+                _parent->onIdle(this, _socket, mask);
+
+                // nothing is wrong, we are done
+                return true;
+            }
+
             // we are now in an error state
             _state = state_error;
 
@@ -256,7 +270,7 @@ private:
         // because the output buffer contains a lot of small buffers, we can do multiple 
         // operations till the buffer is empty (but only if the socket is not also
         // readable, because then we want to read that data first instead of endless writes
-        do
+        while (_out && !isReadable())
         {
             // try to send more data from the outgoing buffer
             auto result = _out.sendto(_ssl);
@@ -264,13 +278,9 @@ private:
             // we may have to repeat the operation on failure
             if (result > 0) continue;
             
-            // check for error
-            auto error = OpenSSL::SSL_get_error(_ssl, result);
-
             // the operation failed, we may have to repeat our call
-            return repeat(monitor, state_sending, error);
+            return repeat(monitor, state_sending, OpenSSL::SSL_get_error(_ssl, result), errno);
         }
-        while (_out && !isReadable());
         
         // proceed with the read operation or the event loop
         return isReadable() ? receive(monitor) : proceed();
@@ -297,7 +307,7 @@ private:
             auto result = _in.receivefrom(_ssl, _parent->expected());
             
             // if this is a failure, we are going to repeat the operation
-            if (result <= 0) return repeat(monitor, state_receiving, OpenSSL::SSL_get_error(_ssl, result));
+            if (result <= 0) return repeat(monitor, state_receiving, OpenSSL::SSL_get_error(_ssl, result), errno);
 
             // go process the received data
             auto *nextstate = parse(monitor, result);
@@ -388,34 +398,40 @@ public:
         if (_closed) return;
         
         // if we're not idle, we can just add bytes to the buffer and we're done
-        if (_state != state_idle || _out) return _out.add(buffer, size);
+        if ((_state != state_idle && _state != state_sending) || _out) 
+        {
+          return _out.add(buffer, size);
+        }
 
-        // clear ssl-level error
-        OpenSSL::ERR_clear_error();
+        size_t remaining = size;
+        size_t bytes = 0;
+        while (remaining > 0)
+        {
+          // clear ssl-level error
+          OpenSSL::ERR_clear_error();
 
-        // get the result
-        int result = OpenSSL::SSL_write(_ssl, buffer, size);  
+          // get the result
+          auto result = OpenSSL::SSL_write(_ssl, buffer + bytes, remaining);
 
-        // number of bytes sent
-        size_t bytes = result < 0 ? 0 : result;
+          if (result < 0)
+          {
+            // check for error
+            if (repeat(state_sending, OpenSSL::SSL_get_error(_ssl, result), errno))
+            {
+              continue;
+            }
 
-        // ok if all data was sent
-        if (bytes >= size) return;
-    
-        // add the data to the buffer
-        _out.add(buffer + bytes, size - bytes);
-        
-        // check for error
-        auto error = OpenSSL::SSL_get_error(_ssl, result);
+            // add the data to the buffer
+            _out.add(buffer + bytes, remaining);
 
-        // the operation failed, we may have to repeat our call. this may detect that
-        // ssl is in an error state, however that is ok because it will set an internal 
-        // state to the error state so that on the next calls to state-changing objects, 
-        // the tcp socket will be torn down
-        if (repeat(state_sending, error)) return;
+            // the repeat call failed, so we are going to find out with a readable file descriptor
+            _parent->onIdle(this, _socket, readable);
+            return;
+          }
 
-        // the repeat call failed, so we are going to find out with a readable file descriptor
-        _parent->onIdle(this, _socket, readable);
+          bytes += result;
+          remaining -= result;
+        }
     }
 
     /**
