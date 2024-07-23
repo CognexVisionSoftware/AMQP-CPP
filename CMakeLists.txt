@@ -119,9 +119,12 @@ install(EXPORT ${PROJECT_NAME}Targets DESTINATION cmake)
 set(cpcf_TARGET ${PROJECT_NAME})
 set(cpcf_INSTALL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include")
 include(CMakePackageConfigHelpers)
-configure_package_config_file("${PROJECT_NAME}Config.cmake.in" "${CMAKE_INSTALL_PREFIX}/cmake/${PROJECT_NAME}Config.cmake"
+configure_package_config_file("${PROJECT_NAME}Config.cmake.in" "${CMAKE_BINARY_DIR}/cmake/${PROJECT_NAME}Config.cmake"
   INSTALL_DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake"
   PATH_VARS cpcf_TARGET cpcf_INSTALL_INC_DIR)
+
+install(FILES "${CMAKE_BINARY_DIR}/cmake/${PROJECT_NAME}Config.cmake"
+          DESTINATION cmake)
 
 set(DEST_DIR "${CMAKE_INSTALL_PREFIX}")
 set(PRIVATE_LIBS "-llibamqpcc")
